@@ -6058,6 +6058,7 @@ void Parser::ParseFncFormals(ParseNodePtr pnodeFnc, ushort flags)
 
                 if (seenRestParameter)
                 {
+                    this->GetCurrentFunctionNode()->sxFnc.SetHasNonSimpleParameterList();
                     if (flags & fFncOneArg)
                     {
                         // The parameter of a setter cannot be a rest parameter.
@@ -6069,7 +6070,6 @@ void Parser::ParseFncFormals(ParseNodePtr pnodeFnc, ushort flags)
                     {
                         // When only validating formals, we won't have a function node.
                         pnodeFnc->sxFnc.pnodeRest = pnodeT;
-                        pnodeFnc->sxFnc.SetHasNonSimpleParameterList();
                         if (!isNonSimpleParameterList)
                         {
                             // This is the first non-simple parameter we've seen. We need to go back
@@ -6105,15 +6105,6 @@ void Parser::ParseFncFormals(ParseNodePtr pnodeFnc, ushort flags)
                 if (seenRestParameter && m_token.tk != tkRParen && m_token.tk != tkAsg)
                 {
                     Error(ERRRestLastArg);
-                }
-
-                if (flags & fFncOneArg)
-                {
-                    if (m_token.tk != tkRParen)
-                    {
-                        Error(ERRSetterMustHaveOneParameter);
-                    }
-                    break; //enforce only one arg
                 }
 
                 if (m_token.tk == tkAsg && m_scriptContext->GetConfig()->IsES6DefaultArgsEnabled())
@@ -6175,6 +6166,15 @@ void Parser::ParseFncFormals(ParseNodePtr pnodeFnc, ushort flags)
             if (isNonSimpleParameterList && m_currentScope->GetHasDuplicateFormals())
             {
                 Error(ERRFormalSame);
+            }
+
+            if (flags & fFncOneArg)
+            {
+                if (m_token.tk != tkRParen)
+                {
+                    Error(ERRSetterMustHaveOneParameter);
+                }
+                break; //enforce only one arg
             }
 
             if (m_token.tk != tkComma)
@@ -10473,7 +10473,13 @@ void Parser::FinishDeferredFunction(ParseNodePtr pnodeScopeList)
             pnodeFnc->sxFnc.pnodeVars = nullptr;
             m_ppnodeVar = &pnodeFnc->sxFnc.pnodeVars;
 
+            Assert(m_currentNodeNonLambdaFunc == nullptr);
+            m_currentNodeNonLambdaFunc = pnodeFnc;
+
             this->FinishFncNode(pnodeFnc);
+
+            Assert(pnodeFnc == m_currentNodeNonLambdaFunc);
+            m_currentNodeNonLambdaFunc = nullptr;
 
             m_ppnodeExprScope = ppnodeExprScopeSave;
 

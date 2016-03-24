@@ -2859,6 +2859,7 @@ namespace Js
         return
             !this->m_isFromNativeCodeModule &&
             !this->m_isAsmJsFunction &&
+            !this->GetAsmJsModuleInfo() &&
             !this->HasExecutionDynamicProfileInfo() &&
             DynamicProfileInfo::IsEnabled(this);
     }
@@ -7078,9 +7079,20 @@ namespace Js
             !IsGenerator(); // Generator JIT requires bailout which SimpleJit cannot do since it skips GlobOpt
     }
 
+    bool FunctionBody::DoSimpleJitWithLock() const
+    {
+        return
+            !PHASE_OFF(Js::SimpleJitPhase, this) &&
+            !GetScriptContext()->GetConfig()->IsNoNative() &&
+            !this->IsInDebugMode() &&
+            DoInterpreterProfileWithLock() &&
+            (!IsNewSimpleJit() || DoInterpreterAutoProfile()) &&
+            !IsGenerator(); // Generator JIT requires bailout which SimpleJit cannot do since it skips GlobOpt
+    }
+
     bool FunctionBody::DoSimpleJitDynamicProfile() const
     {
-        Assert(DoSimpleJit());
+        Assert(DoSimpleJitWithLock());
 
         return !PHASE_OFF(Js::SimpleJitDynamicProfilePhase, this) && !IsNewSimpleJit();
     }
@@ -7089,7 +7101,24 @@ namespace Js
     {
 #if ENABLE_PROFILE_INFO
         // Switch off profiling is asmJsFunction
-        if (this->GetIsAsmJsFunction())
+        if (this->GetIsAsmJsFunction() || this->GetAsmJsModuleInfo())
+        {
+            return false;
+        }
+        else
+        {
+            return !PHASE_OFF(InterpreterProfilePhase, this) && DynamicProfileInfo::IsEnabled(this);
+        }
+#else
+        return false;
+#endif
+    }
+
+    bool FunctionBody::DoInterpreterProfileWithLock() const
+    {
+#if ENABLE_PROFILE_INFO
+        // Switch off profiling is asmJsFunction
+        if (this->GetIsAsmJsFunction() || this->GetAsmJsModuleInfoWithLock())
         {
             return false;
         }

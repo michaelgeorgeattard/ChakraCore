@@ -165,8 +165,6 @@
     <default>
       <files>bug934443.js</files>
       <compile-flags>-force:fieldcopyprop -off:dynamicprofile</compile-flags>
-      <!--Github issue is https://github.com/Microsoft/ChakraCore/issues/610-->
-      <tags>exclude_disable_jit</tags>
     </default>
   </test>
   <test>
@@ -258,6 +256,12 @@
     <default>
       <files>bug_resetisdead.js</files>
       <compile-flags>-on:prelowererpeeps</compile-flags>
+    </default>
+  </test>
+  <test>
+    <default>
+      <files>bug_es5array.js</files>
+      <compile-flags>-off:NativeArray -ForceES5Array</compile-flags>
     </default>
   </test>
 </regress-exe>
